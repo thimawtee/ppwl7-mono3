@@ -1,5 +1,5 @@
 # Monorepo Phase 3
-Lanjutan Tutorial Monorepo. Integrasi **Google Classroom API** untuk mahasiswa mengambil data submisi tugas mereka.
+Integrasi **Google Classroom API** untuk mahasiswa mengambil data submisi tugas mereka.
 
 - **Backend** → OAuth2 Google + route login + route ambil data Classroom
 - **Frontend** → Grid tampil tugas, deskripsi, lampiran, skor, dan submisi mahasiswa
@@ -8,12 +8,13 @@ Lanjutan Tutorial Monorepo. Integrasi **Google Classroom API** untuk mahasiswa m
 
 ---
 
-## Clone repo
-- clone repo
-Generate client
+# 0. Persiapan
+Agar Phase 2 sudah aman, bisa langsung clone repo ini:
 ```bash
-cd apps/backend
-
+git clone https://github.com/Leo42night/monorepo ppwl7-mono3
+cd ppwl7-mono3 && bun install
+cd apps/backend && bunx --bun prisma generate
+cd ../.. && bun dev
 ```
 
 # 1. Setup Google Cloud Project

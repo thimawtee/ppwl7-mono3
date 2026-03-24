@@ -48,7 +48,7 @@ Perhatikan generated file **prisma.config.ts**. ia akan meminta env DATABASE_URL
 
 ## Konfigurasi Prisma
 
-Buat skema, tambahkan beberapa konfig ini komponen `schema.prisma`:
+Buat skema, tambahkan beberapa konfig ini komponen `schema.prisma` (jangan sampai double, jangan hapus config yg lain):
 
 ```prisma
 generator client {
@@ -69,20 +69,26 @@ model User {
 
 ```bash
 bunx --bun prisma migrate dev --name init
-bunx --bun prisma generate # generate the Prisma Client
+bunx --bun prisma generate # generate the Prisma Client backend/src/prisma/generate
 ```
-Jika gagal load DATABASE_URL. tambahkan package dotenv di backend -> `bun add dotenv`. Lalu tambahkan di `prisma.config.ts`:
+Jika gagal load DATABASE_URL. ganti fungsi env bawaan prisma ke process.env node.
+di `apps\backend\prisma.config.ts`:
 ```ts
-import "dotenv/config"
-```
-Jalankan lagi `prisma generate` jika sudah selesai.
+import { defineConfig, env } from "prisma/config";
+// jadi ⬇️
+import { defineConfig } from "prisma/config";
+// -----------------
+    url: env("DATABASE_URL"),
+// jadi ⬇️
+    url: process.env.DATABASE_URL || "file:./dev.db",
+``` 
 
 Buat `apps/backend/prisma/db.ts`:
 ```ts
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaLibSql } from "@prisma/adapter-libsql";
 
-const adapter = new PrismaLibSql({ url: process.env.DATABASE_URL || "" });
+const adapter = new PrismaLibSql({ url: process.env.DATABASE_URL || "file:./dev.db" });
 export const prisma = new PrismaClient({ adapter });
 ```
 
@@ -116,7 +122,7 @@ async function main() {
 
 main().finally(() => prisma.$disconnect())
 ```
-Jalankan: `bun prisma/seed.ts` (insert data user ke database)
+Jalankan: `bun prisma/seed.ts` (insert data user ke database, tidak perlu run server lebih dulu)
 
 FIX: jika dapat error Cannot find module `@prisma/client-runtime-utils`, jalankan saja `bun add @prisma/client-runtime-utils`.
 ---
@@ -179,7 +185,7 @@ bunx --bun shadcn@latest add table card
 ---
 
 ## File UI
-buat `packages/frontend/src/App2.tsx`:
+buat `apps/frontend/src/App2.tsx`:
 
 ```tsx
 import { useEffect, useState } from "react"
