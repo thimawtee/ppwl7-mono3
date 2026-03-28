@@ -4,8 +4,7 @@
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "bun run --filter '*' dev",
-    "dev:frontend": "bun run --filter frontend dev",
-    "dev:backend": "bun run --filter backend dev",
-    "build": "bun run --filter '*' build"
+    "build": "bun run --filter '*' build",
+    "start": "bun run --env-file=apps/backend/.env.production --filter '*' start"
   }
 }
