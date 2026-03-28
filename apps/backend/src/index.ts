@@ -28,10 +28,12 @@ const tokenStore = new Map<string, { access_token: string; refresh_token?: strin
 
 const app = new Elysia()
   // Menggunakan URL dari ENV untuk CORS. TEST_URL bisa diisi "*" untuk dev.
-  .use(cors({ 
-    origin: [process.env.FRONTEND_URL ?? "", process.env.TEST_URL ?? ""], 
-    credentials: true 
-  }))
+  .use(
+    cors({
+      origin: process.env.FRONTEND_URL || "http://localhost:5173",
+      credentials: true, // WAJIB untuk /auth/me yang mengecek session/cookie
+      allowedHeaders: ["Content-Type", "Authorization"]
+    }))
   .use(swagger())
   .use(cookie())
   
@@ -41,21 +43,24 @@ const app = new Elysia()
 
     if (url.pathname.startsWith("/users")) {
       const origin = request.headers.get("origin");
-      const frontendUrl = process.env.FRONTEND_URL ?? "";
+      const frontendUrl = process.env.FRONTEND_URL ?? "http://localhost:5173";
+      const key = url.searchParams.get("key");
 
-      // Jika request dari FRONTEND_URL resmi → izinkan
-      if (origin && origin === frontendUrl) return;
+      // 1. Izinkan jika datang dari Frontend resmi (AJAX/Fetch)
+      if (origin === frontendUrl) {
+        return;
+      }
 
-      // Jika akses browser langsung atau dari tempat lain → wajib cek key
-      if (isBrowserRequest(request) || (origin && origin !== frontendUrl)) {
-        const key = url.searchParams.get("key");
-
-        if (!key || key !== process.env.API_KEY) {
-          set.status = 401;
-          return { message: "Unauthorized: missing or invalid key" };
-        }
+      // 2. Jika tidak dari Frontend, WAJIB cek API_KEY
+      // Ini akan menangkap akses langsung browser, Postman, cURL, dll.
+      if (key !== process.env.API_KEY) {
+        set.status = 401;
+        return { message: "Unauthorized: Access denied without valid API Key" };
       }
     }
+  })
+  .get("/auth/callback", async ({ query, set, cookie: { session }, redirect }) => {
+    // ... kode di sini sama aja
   })
 
   // Health check
@@ -110,13 +115,20 @@ const app = new Elysia()
       refresh_token: tokens.refresh_token ?? undefined,
     });
 
-    if (session) {
-      session.value = sessionId;
-      session.maxAge = 60 * 60 * 24; 
-      session.path = "/"; // Pastikan cookie bisa dibaca di semua path
-    }
+    if (!session) return;
 
-    // Redirect DYNAMIC menggunakan FRONTEND_URL dari ENV
+    // Set cookie session
+    session.value = sessionId;
+    session.maxAge = 60 * 60 * 24; // 1 hari
+    session.path = "/";
+
+    // !!! Tambahkan KONFIGURASI PRODUCTION
+    session.httpOnly = true;
+    session.secure = true;    // WAJIB: Cookie hanya dikirim lewat HTTPS
+    session.sameSite = "none"; // WAJIB: Agar cookie bisa dikirim antar domain berbeda
+
+    // Redirect ke frontend
+    // !!! ubah url frontend jadi env var (lakukan ke semua file di apps/backend), contoh:
     return redirect(`${process.env.FRONTEND_URL}/classroom`);
   })
 
@@ -180,12 +192,12 @@ const app = new Elysia()
 // --- SERVER LISTEN & LOGS ---
 
 // Hanya jalankan app.listen() dan logs jika BUKAN di production (Vercel handle listen otomatis)
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV != "production") {
   app.listen(3000);
-  console.log(`🦊 Backend Running on http://localhost:3000`);
-  console.log(`🦊 FRONTEND_URL: ${process.env.FRONTEND_URL}`);
-  console.log(`🦊 TEST_URL: ${process.env.TEST_URL}`);
-  console.log(`🦊 DATABASE_URL: ${process.env.DATABASE_URL ? "Connected ✅" : "Missing ❌"}`);
+  console.log(`🦊 Backend → http://localhost:3000`);
+  console.log(`🦊 FRONTEND_URL → ${process.env.FRONTEND_URL}`); // pembeda .env.development & .env.production
+  console.log(`🦊 DATABASE_URL: ${process.env.DATABASE_URL}`); // pembeda development & production
+  console.log(`🦊 GOOGLE_REDIRECT_URI: ${process.env.GOOGLE_REDIRECT_URI}`); // dari file .env
 }
 
 // Export default wajib agar Vercel dapat membaca instance Elysia sebagai handler
